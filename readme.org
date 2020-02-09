@@ -1,0 +1,19 @@
+#+TITLE: osd
+#+STARTUP: showeverything
+
+Notification daemon for emacs.
+
+** Usage
+   I use [[https://github.com/jwiegley/use-package][use-package]] and [[https://github.com/raxod502/straight.el][straight.el]]:
+
+   #+begin_src elisp
+     (use-package osd
+       :straight (:host github :repo "0x0049/osd")
+       :init (osd-start))
+   #+end_src
+
+   Start Emacs with something like:
+
+   #+begin_src sh
+     exec dbus-launch --exit-with-session emacs
+   #+end_src
