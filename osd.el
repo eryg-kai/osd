@@ -188,6 +188,12 @@ never expires."
      s (intern (format "osd--dbus-%s" (osd--pascal-to-kebab s))))))
 
 ;;;###autoload
+(defun osd-show-notifications ()
+  "Show notifications buffer."
+  (interactive)
+  (pop-to-buffer (get-buffer-create "*Notifications*")))
+
+;;;###autoload
 (defun osd-stop ()
   "Stop listening."
   (interactive)
