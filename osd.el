@@ -173,7 +173,10 @@ never expires."
       (osd-mode)
       (osd-refresh)
       (tablist-revert))
-    (pop-to-buffer buffer)))
+    ;; REVIEW: This is fairly aggressive but I keep missing notifications. Maybe
+    ;; it should disappear after some time or there should be an option to show
+    ;; an unread count in the mode line instead?
+    (display-buffer buffer)))
 
 ;;;###autoload
 (defun osd-start ()
