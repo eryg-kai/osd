@@ -156,9 +156,8 @@ never expires."
 (defun osd--entries ()
   "Return notification data for `tabulated-list-entries'."
   (let ((vect nil)
-        (length (or (and osd--notification-ring (ring-length osd--notification-ring)) 0))
-        (idx 0))
-    (while (and (< idx length))
+        (idx (- (or (and osd--notification-ring (ring-length osd--notification-ring)) 0) 1)))
+    (while (and (>= idx 0))
       (let* ((entry (ring-ref osd--notification-ring idx))
              (notification (cdr entry)))
         (push
@@ -166,7 +165,7 @@ never expires."
                          ,(cl-struct-slot-value 'notification 'summary notification)
                          ,(cl-struct-slot-value 'notification 'body notification)])
          vect))
-      (setq idx (+ 1 idx)))
+      (setq idx (- idx 1)))
     vect))
 
 (defun osd--refresh ()
@@ -189,21 +188,19 @@ If ID is not found, go to the beginning of the buffer."
 
 (defun osd--get-notification (id)
   "Get a notification by ID."
-  (let ((length (or (and osd--notification-ring (ring-length osd--notification-ring)) 0))
-        (idx 0))
-    (while (and (< idx length)
+  (let ((idx (- (or (and osd--notification-ring (ring-length osd--notification-ring)) 0) 1)))
+    (while (and (>= idx 0)
                 (not (eq id (car (ring-ref osd--notification-ring idx)))))
-      (setq idx (+ 1 idx)))
-    (when (< idx length) (ring-ref osd--notification-ring idx))))
+      (setq idx (- idx 1)))
+    (when (>= idx 0) (ring-ref osd--notification-ring idx))))
 
 (defun osd--delete-notification (id)
   "Delete a notification by ID."
-  (let ((length (or (and osd--notification-ring (ring-length osd--notification-ring)) 0))
-        (idx 0))
-    (while (and (< idx length)
+  (let ((idx (- (or (and osd--notification-ring (ring-length osd--notification-ring)) 0) 1)))
+    (while (and (>= idx 0)
                 (not (eq id (car (ring-ref osd--notification-ring idx)))))
-      (setq idx (+ 1 idx)))
-    (when (< idx length) (ring-remove osd--notification-ring idx))))
+      (setq idx (- idx 1)))
+    (when (>= idx 0) (ring-remove osd--notification-ring idx))))
 
 ;;;###autoload
 (defun osd-notify (id notification)

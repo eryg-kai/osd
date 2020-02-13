@@ -85,9 +85,9 @@
 
   (let ((entries (osd--entries)))
     (should (eq 3 (length entries)))
-    (should (string= "summary replaced 2" (aref (cadr (nth 2 entries)) 1)))
+    (should (string= "summary replaced 2" (aref (cadr (nth 0 entries)) 1)))
     (should (string= "summary replaced 1" (aref (cadr (nth 1 entries)) 1)))
-    (should (string= "body replaced 0" (aref (cadr (nth 0 entries)) 2))))
+    (should (string= "body replaced 0" (aref (cadr (nth 2 entries)) 2))))
 
   (osd--delete-notification 1)
   (should (eq 2 (ring-length osd--notification-ring)))
