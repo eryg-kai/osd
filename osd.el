@@ -172,7 +172,8 @@ never expires."
     (with-current-buffer buffer
       (osd-mode)
       (osd-refresh)
-      (tablist-revert))
+      (tablist-revert)
+      (goto-char (point-min)))
     ;; REVIEW: This is fairly aggressive but I keep missing notifications. Maybe
     ;; it should disappear after some time or there should be an option to show
     ;; an unread count in the mode line instead?
