@@ -3,9 +3,6 @@
 ;; Copyright (c) 2020 0x0049
 ;;
 ;; Author: 0x0049 <dev@0x0049.me>
-;; URL: https://github.com/0x0049/osd
-;; Keywords: notifications dbus
-;; Version: 1.0
 
 ;; This file is not part of GNU Emacs.
 
@@ -23,6 +20,8 @@
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
+
+;; Test helpers for osd.
 
 ;;; Code:
 

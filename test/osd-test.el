@@ -3,9 +3,6 @@
 ;; Copyright (c) 2020 0x0049
 ;;
 ;; Author: 0x0049 <dev@0x0049.me>
-;; URL: https://github.com/0x0049/osd
-;; Keywords: notifications dbus
-;; Version: 1.0
 
 ;; This file is not part of GNU Emacs.
 
@@ -24,13 +21,26 @@
 
 ;;; Commentary:
 
+;; Tests osd.
+
 ;;; Code:
 
 (require 'osd)
 
 (ert-deftest osd-test-pascal-to-kebab ()
+  "Test converting PascalCase to kebab-case."
   (should (string= "test" (osd--pascal-to-kebab "Test")))
   (should (string= "test-this-var" (osd--pascal-to-kebab "TestThisVar"))))
+
+(ert-deftest osd-test-appt-format ()
+  "Test appointment formatting."
+  (should (equal '("Foo in 10 mins" "@ 10:00 to 11:00.") (osd--org-format-appt "10" "10:00 Foo 10:00-11:00")))
+  (should (equal '("Bar now" "Task @ 11:00.") (osd--org-format-appt "0" "11:00 TASK Bar 11:00")))
+  (should (equal '("Baz in 1 min" "Habit @ 12:31 to 12:32.") (osd--org-format-appt "1" "12:31 HABIT Baz 12:31-12:32")))
+  (should (equal '("Baz in 1 min" "@ 12:31 to 12:32.") (osd--org-format-appt "1" "12:31 Baz 12:31-12:32")))
+  (should (equal '("Qux mumble in 1 min" "@ 10:00.") (osd--org-format-appt "1" "10:00 Qux mumble")))
+  (should (equal '("thud garply plugh in 2 mins" "@ 13:00.") (osd--org-format-appt "2" "13:00 thud garply plugh")))
+  (should (equal '("thud garply plugh in 2 mins" "") (osd--org-format-appt "2" "thud garply plugh"))))
 
 (provide 'osd-test)
 

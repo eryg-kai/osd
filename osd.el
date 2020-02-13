@@ -5,7 +5,7 @@
 ;; Author: 0x0049 <dev@0x0049.me>
 ;; URL: https://github.com/0x0049/osd
 ;; Keywords: notifications dbus
-;; Version: 1.0
+;; Version: 1.0.1
 
 ;; This file is NOT part of GNU Emacs.
 ;;
@@ -212,6 +212,47 @@ never expires."
   (add-hook 'tabulated-list-revert-hook #'osd-refresh nil t)
   (tabulated-list-init-header)
   (tablist-minor-mode))
+
+(defun osd--org-format-appt (remaining text)
+  "Format appointment described by TEXT due in REMAINING minutes.
+
+The result is a list with the summary and body."
+  (let ((case-fold-search nil)
+        (remaining (if (string= "0" remaining)
+                       "now"
+                     (concat "in " remaining " min"
+                             (unless (string= "1" remaining) "s")))))
+    (save-match-data
+      ;; [START] [STATE? (3+ capitalized chars)] [SUMMARY] [START?] - [END?]
+      ;; 10:00   TASK                            TEXT      10:00    - 11:00
+      (if (string-match "^\\([0-9]+:[0-9]+\\) \\(?:\\([A-Z]\\{3,\\}\\) \\)?\\(.+?\\)\\(?: ?\\([0-9]+:[0-9]+\\)\\)?\\(?:-\\([0-9]+:[0-9]+\\)\\)?$" text)
+          (let ((state (match-string 2 text))
+                (summary (match-string 3 text))
+                (start (or (match-string 4 text) (match-string 1 text)))
+                (end (match-string 5 text)))
+            `(,(concat summary " " remaining)
+              ,(concat (when state (concat (capitalize state) " "))
+                       "@ "
+                       start (when end " to ") end
+                       ".")))
+        `(,(format "%s %s" text remaining) "")))))
+
+(defun osd--org-single-appt-display (remaining text)
+  "Display appointment described by TEXT due in REMAINING minutes."
+  (apply 'call-process "notify-send" nil 0 nil (osd--org-format-appt remaining text)))
+
+;;;###autoload
+(defun osd-org-appt-display (remaining _current text)
+  "Display appointment described by TEXT due in REMAINING (a string) minutes.
+
+CURRENT is a string giving the current date.
+
+The arguments may also be lists, where each element is a separate
+appointment."
+  (if (listp remaining)
+      (dotimes (i (length remaining))
+        (osd--org-single-appt-display (nth i remaining) (nth i text)))
+    (osd--org-single-appt-display remaining text)))
 
 (provide 'osd)
 
