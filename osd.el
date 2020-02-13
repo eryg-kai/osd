@@ -206,7 +206,7 @@ never expires."
 
 (define-derived-mode osd-mode tabulated-list-mode "OSD"
   "Mode for the notification center."
-  (setq tabulated-list-format [("Time" 20 t)("Summary" 20 t)("Body" 30 t)]
+  (setq tabulated-list-format [("Time" 20 t)("Summary" 50 t)("Body" 50 t)]
         tabulated-list-padding 2)
   (add-hook 'tabulated-list-revert-hook #'osd-refresh nil t)
   (tabulated-list-init-header)
