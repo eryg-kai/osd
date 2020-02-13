@@ -39,6 +39,11 @@
   :type 'string
   :group 'osd)
 
+(defcustom osd-max-notifications 1000
+  "Maximum number of notifications to keep in memory."
+  :type 'integer
+  :group 'osd)
+
 (defvar osd--dbus-signals
   '("ActionInvoked"
      "CloseNotification"
@@ -52,7 +57,7 @@
 
 (cl-defstruct notification time summary body)
 
-(defvar osd--notifications nil "Notification list.")
+(defvar osd--notification-ring nil "Notification list.")
 
 ;; Each notification gets an incrementing ID. Servers should never return zero
 ;; for an ID.
@@ -150,13 +155,19 @@ never expires."
 
 (defun osd--entries ()
   "Return notification data for `tabulated-list-entries'."
-  (mapcar
-   #'(lambda (entry)
-       (let ((notification (cdr entry)))
+  (let ((vect nil)
+        (length (ring-length osd--notification-ring))
+        (idx 0))
+    (while (and (< idx length))
+      (let* ((entry (ring-ref osd--notification-ring idx))
+             (notification (cdr entry)))
+        (push
          `(,(car entry) [,(cl-struct-slot-value 'notification 'time notification)
                          ,(cl-struct-slot-value 'notification 'summary notification)
-                         ,(cl-struct-slot-value 'notification 'body notification)])))
-   osd--notifications))
+                         ,(cl-struct-slot-value 'notification 'body notification)])
+         vect))
+      (setq idx (+ 1 idx)))
+    vect))
 
 (defun osd-refresh ()
   "Refresh the notification list."
@@ -176,12 +187,25 @@ If ID is not found, go to the beginning of the buffer."
     (tablist-move-to-column
      (or col (car (tablist-major-columns))))))
 
+(defun osd--get-notification (id)
+  "Get a notification by ID."
+  (let ((length (ring-length osd--notification-ring))
+        (idx 0))
+    (while (and (< idx length)
+                (not (eq id (car (ring-ref osd--notification-ring idx)))))
+      (setq idx (+ 1 idx)))
+    (when (< idx length) (ring-ref osd--notification-ring idx))))
+
 ;;;###autoload
 (defun osd-notify (id notification)
   "Store NOTIFICATION by ID then refresh notification list."
-  (let ((existing (assq id osd--notifications)))
+  (if osd--notification-ring
+      (unless (eq osd-max-notifications (ring-size osd--notification-ring))
+        (ring-resize osd--notification-ring osd-max-notifications))
+    (setq osd--notification-ring (make-ring osd-max-notifications)))
+  (let ((existing (osd--get-notification id)))
     (if existing (setcdr existing notification)
-      (push `(,id . ,notification) osd--notifications)))
+      (ring-insert osd--notification-ring `(,id . ,notification))))
   (let ((buffer (get-buffer-create "*Notifications*")))
     (with-current-buffer buffer
       (osd-mode)

@@ -42,6 +42,49 @@
   (should (equal '("thud garply plugh in 2 mins" "@ 13:00.") (osd--org-format-appt "2" "13:00 thud garply plugh")))
   (should (equal '("thud garply plugh in 2 mins" "") (osd--org-format-appt "2" "thud garply plugh"))))
 
+(ert-deftest osd-test-notify ()
+  "Test that notifications are added."
+  (should-not osd--notification-ring)
+  (dotimes (i 3)
+    (let ((notification (make-notification
+                         :time (format-time-string osd-time-format)
+                         :summary (format "summary %s" i)
+                         :body (format "body %s" i))))
+      (osd-notify i notification)))
+
+  (should (eq 3 (ring-length osd--notification-ring)))
+
+  (should (eq 2 (car (ring-ref osd--notification-ring 0))))
+  (should (eq 1 (car (ring-ref osd--notification-ring 1))))
+  (should (eq 0 (car (ring-ref osd--notification-ring 2))))
+
+  (should (string= "summary 2" (cl-struct-slot-value 'notification 'summary (cdr (ring-ref osd--notification-ring 0)))))
+  (should (string= "summary 1" (cl-struct-slot-value 'notification 'summary (cdr (ring-ref osd--notification-ring 1)))))
+  (should (string= "body 0" (cl-struct-slot-value 'notification 'body (cdr (ring-ref osd--notification-ring 2)))))
+
+  (dotimes (i 3)
+    (let ((notification (make-notification
+                         :time (format-time-string osd-time-format)
+                         :summary (format "summary replaced %s" i)
+                         :body (format "body replaced %s" i))))
+      (osd-notify i notification)))
+
+  (should (eq 3 (ring-length osd--notification-ring)))
+
+  (should (eq 2 (car (ring-ref osd--notification-ring 0))))
+  (should (eq 1 (car (ring-ref osd--notification-ring 1))))
+  (should (eq 0 (car (ring-ref osd--notification-ring 2))))
+
+  (should (string= "summary replaced 2" (cl-struct-slot-value 'notification 'summary (cdr (ring-ref osd--notification-ring 0)))))
+  (should (string= "summary replaced 1" (cl-struct-slot-value 'notification 'summary (cdr (ring-ref osd--notification-ring 1)))))
+  (should (string= "body replaced 0" (cl-struct-slot-value 'notification 'body (cdr (ring-ref osd--notification-ring 2)))))
+
+  (let ((entries (osd--entries)))
+    (should (eq 3 (length entries)))
+    (should (string= "summary replaced 2" (aref (cadr (nth 2 entries)) 1)))
+    (should (string= "summary replaced 1" (aref (cadr (nth 1 entries)) 1)))
+    (should (string= "body replaced 0" (aref (cadr (nth 0 entries)) 2)))))
+
 (provide 'osd-test)
 
 ;;; osd-test.el ends here
