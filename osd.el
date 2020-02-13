@@ -162,6 +162,20 @@ never expires."
   "Refresh the notification list."
   (setq tabulated-list-entries (osd--entries)))
 
+(defun osd-goto-notification (id)
+  "Goto to the notification identified by ID, staying on the same column.
+
+If ID is not found, go to the beginning of the buffer."
+  (unless (derived-mode-p 'osd-mode)
+    (error "The current buffer is not in OSD mode"))
+  (let ((col (tablist-current-column)))
+    (goto-char (point-min))
+    (while (and (not (equal id (tabulated-list-get-id)))
+                (not (eq 1 (forward-line 1)))))
+    (unless (tabulated-list-get-id) (goto-char (point-min)))
+    (tablist-move-to-column
+     (or col (car (tablist-major-columns))))))
+
 ;;;###autoload
 (defun osd-notify (id notification)
   "Store NOTIFICATION by ID then refresh notification list."
@@ -173,7 +187,7 @@ never expires."
       (osd-mode)
       (osd-refresh)
       (tablist-revert)
-      (goto-char (point-min)))
+      (osd-goto-notification id))
     ;; REVIEW: This is fairly aggressive but I keep missing notifications. Maybe
     ;; it should disappear after some time or there should be an option to show
     ;; an unread count in the mode line instead?
