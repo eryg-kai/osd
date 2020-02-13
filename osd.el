@@ -156,7 +156,7 @@ never expires."
 (defun osd--entries ()
   "Return notification data for `tabulated-list-entries'."
   (let ((vect nil)
-        (length (ring-length osd--notification-ring))
+        (length (or (and osd--notification-ring (ring-length osd--notification-ring)) 0))
         (idx 0))
     (while (and (< idx length))
       (let* ((entry (ring-ref osd--notification-ring idx))
@@ -169,11 +169,11 @@ never expires."
       (setq idx (+ 1 idx)))
     vect))
 
-(defun osd-refresh ()
+(defun osd--refresh ()
   "Refresh the notification list."
   (setq tabulated-list-entries (osd--entries)))
 
-(defun osd-goto-notification (id)
+(defun osd--goto-notification (id)
   "Goto to the notification identified by ID, staying on the same column.
 
 If ID is not found, go to the beginning of the buffer."
@@ -189,12 +189,21 @@ If ID is not found, go to the beginning of the buffer."
 
 (defun osd--get-notification (id)
   "Get a notification by ID."
-  (let ((length (ring-length osd--notification-ring))
+  (let ((length (or (and osd--notification-ring (ring-length osd--notification-ring)) 0))
         (idx 0))
     (while (and (< idx length)
                 (not (eq id (car (ring-ref osd--notification-ring idx)))))
       (setq idx (+ 1 idx)))
     (when (< idx length) (ring-ref osd--notification-ring idx))))
+
+(defun osd--delete-notification (id)
+  "Delete a notification by ID."
+  (let ((length (or (and osd--notification-ring (ring-length osd--notification-ring)) 0))
+        (idx 0))
+    (while (and (< idx length)
+                (not (eq id (car (ring-ref osd--notification-ring idx)))))
+      (setq idx (+ 1 idx)))
+    (when (< idx length) (ring-remove osd--notification-ring idx))))
 
 ;;;###autoload
 (defun osd-notify (id notification)
@@ -209,9 +218,9 @@ If ID is not found, go to the beginning of the buffer."
   (let ((buffer (get-buffer-create "*Notifications*")))
     (with-current-buffer buffer
       (osd-mode)
-      (osd-refresh)
+      (osd--refresh)
       (tablist-revert)
-      (osd-goto-notification id))
+      (osd--goto-notification id))
     ;; REVIEW: This is fairly aggressive but I keep missing notifications. Maybe
     ;; it should disappear after some time or there should be an option to show
     ;; an unread count in the mode line instead?
@@ -233,7 +242,10 @@ If ID is not found, go to the beginning of the buffer."
 (defun osd-show-notifications ()
   "Show notifications buffer."
   (interactive)
-  (pop-to-buffer (get-buffer-create "*Notifications*")))
+  (pop-to-buffer (get-buffer-create "*Notifications*"))
+  (osd-mode)
+  (osd--refresh)
+  (tablist-revert))
 
 ;;;###autoload
 (defun osd-stop ()
@@ -243,11 +255,20 @@ If ID is not found, go to the beginning of the buffer."
   (setq osd--listening nil)
   (dbus-unregister-service :session "org.freedesktop.Notifications"))
 
+(defun osd--tablist-operations (operation &rest arguments)
+  "Perform OPERATION with ARGUMENTS.
+
+See `tablist-operations-function' for more information."
+  (cl-ecase operation
+    (delete (mapc #'osd--delete-notification (nth 0 arguments)))
+    (supported-operations '(delete))))
+
 (define-derived-mode osd-mode tabulated-list-mode "OSD"
   "Mode for the notification center."
   (setq tabulated-list-format [("Time" 20 t)("Summary" 50 t)("Body" 50 t)]
-        tabulated-list-padding 2)
-  (add-hook 'tabulated-list-revert-hook #'osd-refresh nil t)
+        tabulated-list-padding 2
+        tablist-operations-function 'osd--tablist-operations)
+  (add-hook 'tabulated-list-revert-hook #'osd--refresh nil t)
   (tabulated-list-init-header)
   (tablist-minor-mode))
 

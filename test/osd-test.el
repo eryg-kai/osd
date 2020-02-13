@@ -45,6 +45,10 @@
 (ert-deftest osd-test-notify ()
   "Test that notifications are added."
   (should-not osd--notification-ring)
+  (should-not (osd--entries))
+  (should-not (osd--get-notification 1))
+  (should-not (osd--delete-notification 1))
+
   (dotimes (i 3)
     (let ((notification (make-notification
                          :time (format-time-string osd-time-format)
@@ -83,7 +87,15 @@
     (should (eq 3 (length entries)))
     (should (string= "summary replaced 2" (aref (cadr (nth 2 entries)) 1)))
     (should (string= "summary replaced 1" (aref (cadr (nth 1 entries)) 1)))
-    (should (string= "body replaced 0" (aref (cadr (nth 0 entries)) 2)))))
+    (should (string= "body replaced 0" (aref (cadr (nth 0 entries)) 2))))
+
+  (osd--delete-notification 1)
+  (should (eq 2 (ring-length osd--notification-ring)))
+  (should (eq 2 (car (ring-ref osd--notification-ring 0))))
+  (should (eq 0 (car (ring-ref osd--notification-ring 1))))
+
+  (osd--tablist-operations 'delete '(0 2))
+  (should (eq 0 (ring-length osd--notification-ring))))
 
 (provide 'osd-test)
 
