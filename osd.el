@@ -145,7 +145,7 @@ never expires."
     (osd-notify id (make-notification
                     :time (format-time-string osd-time-format)
                     :summary summary
-                    :body body))
+                    :body (replace-regexp-in-string "\n+" " " body)))
     id))
 
 (defun osd--pascal-to-kebab (var)
