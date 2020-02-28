@@ -145,7 +145,7 @@ never expires."
     (osd-notify id (make-notification
                     :time (format-time-string osd-time-format)
                     :summary summary
-                    :body (replace-regexp-in-string "\n+" " " body)))
+                    :body body))
     id))
 
 (defun osd--pascal-to-kebab (var)
@@ -163,7 +163,9 @@ never expires."
         (push
          `(,(car entry) [,(cl-struct-slot-value 'notification 'time notification)
                          ,(cl-struct-slot-value 'notification 'summary notification)
-                         ,(cl-struct-slot-value 'notification 'body notification)])
+                         ,(replace-regexp-in-string
+                          "\n+" " "
+                          (cl-struct-slot-value 'notification 'body notification))])
          vect))
       (setq idx (- idx 1)))
     vect))
