@@ -153,6 +153,19 @@ never expires."
   (let ((case-fold-search nil))
     (downcase (replace-regexp-in-string "\\(.\\)\\([A-Z]+\\)" "\\1-\\2" var))))
 
+(defun osd--center-truncate (item len)
+  "Replace the center of ITEM with … to make it of length LEN (including …).
+
+When the length is odd the right side will be one longer than the left."
+  (let ((item (if (stringp item) item (format "%s" item))))
+    (if (> (length item) len)
+        (let* ((len (- len 1))
+               (mid (/ len 2)))
+          (concat (substring item 0 mid)
+                  (apply #'propertize "…" (text-properties-at (- mid 1) item))
+                  (substring item (- mid len) nil)))
+      item)))
+
 (defun osd--entries ()
   "Return notification data for `tabulated-list-entries'."
   (let ((vect nil)
@@ -162,10 +175,14 @@ never expires."
              (notification (cdr entry)))
         (push
          `(,(car entry) [,(cl-struct-slot-value 'notification 'time notification)
-                         ,(cl-struct-slot-value 'notification 'summary notification)
-                         ,(replace-regexp-in-string
-                          "\n+" " "
-                          (cl-struct-slot-value 'notification 'body notification))])
+                         ,(osd--center-truncate
+                           (cl-struct-slot-value 'notification 'summary notification)
+                           50)
+                         ,(osd--center-truncate
+                           (replace-regexp-in-string
+                            "\n+" " "
+                            (cl-struct-slot-value 'notification 'body notification))
+                           50)])
          vect))
       (setq idx (- idx 1)))
     vect))
