@@ -316,6 +316,23 @@ The result is a list with the summary and body."
   "Display appointment described by TEXT due in REMAINING minutes."
   (apply 'call-process "notify-send" nil 0 nil (osd--org-format-appt remaining text)))
 
+(defun osd--org-agenda-format-item (fn &rest args)
+  "Append time to txt of the string returned by calling FN with ARGS.
+
+The resulting string is returned.
+
+This works in conjunction with `osd-org-appt-display' so it can
+display the end time."
+  (let* ((string (apply fn args))
+         (time (org-find-text-property-in-string 'time string))
+         (txt (org-find-text-property-in-string 'txt string)))
+    (if (not (string-empty-p time))
+        (org-add-props string nil 'txt (concat (org-trim txt) " " time))
+      string)))
+
+;;;###autoload
+(advice-add 'org-agenda-format-item :around #'osd--org-agenda-format-item)
+
 ;;;###autoload
 (defun osd-org-appt-display (remaining _current text)
   "Display appointment described by TEXT due in REMAINING (a string) minutes.
