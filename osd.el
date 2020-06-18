@@ -44,15 +44,6 @@
   :type 'integer
   :group 'osd)
 
-(defvar osd--dbus-signals
-  '("ActionInvoked"
-     "CloseNotification"
-     "GetCapabilities"
-     "GetServerInformation"
-     "NotificationClosed"
-     "Notify")
-  "DBus signals.")
-
 (defvar osd--listening nil "Whether currently listening for notifications.")
 
 (cl-defstruct notification time summary body)
@@ -82,8 +73,9 @@ The NotificationClosed signal is emitted by this method."
 
 (defun osd--dbus-get-capabilities ()
   "Handle the GetCapabilities signal."
-  '(;; "action-icons"  ;; Icons for actions instead of text.
-    ;; "actions"       ;; Provide actions to the user.
+  '((;; "action-icons"  ;; Icons for actions instead of text.
+    "actions"          ;; Provide actions to the user. Not actually supported
+                       ;; but this lie fixes browser notifications.
     "body"             ;; Body text.
     "body-hyperlinks"  ;; Hyperlinks in the body.
     ;; "body-images"   ;; Images in the body.
@@ -92,14 +84,14 @@ The NotificationClosed signal is emitted by this method."
     ;; "icon-static"   ;; Show one frame (mutually exclusive with icon-multi).
     "persistence"      ;; Notifications are retained until removed by user.
     ;; "sound"         ;; Must support "sound-file" and "suppress-sound" hints.
-    ))
+    )))
 
 (defun osd--dbus-get-server-information ()
   "Handle the GetServerInformation signal."
-  '("osd"     ;; Name of the server.
-    "0x0049"  ;; Vendor name.
-    "1.0"     ;; Version of the server.
-    "1"     ;; Version of the spec with which the server is compliant.
+  '("osd"    ;; Name of the server.
+    "0x0049" ;; Vendor name.
+    "1.1"    ;; Version of the server.
+    "1.2"    ;; Version of the spec with which the server is compliant.
     ))
 
 (defun osd--dbus-notification-closed (id reason)
@@ -147,11 +139,6 @@ never expires."
                     :summary summary
                     :body body))
     id))
-
-(defun osd--pascal-to-kebab (var)
-  "Convert VAR from PascalCase to kebab-case."
-  (let ((case-fold-search nil))
-    (downcase (replace-regexp-in-string "\\(.\\)\\([A-Z]+\\)" "\\1-\\2" var))))
 
 (defun osd--center-truncate (item len)
   "Replace the center of ITEM with … to make it of length LEN (including …).
@@ -242,17 +229,30 @@ If ID is not found, go to the beginning of the buffer."
     ;; an unread count in the mode line instead?
     (display-buffer buffer)))
 
+(defun osd--register (fn signals)
+  "Register SIGNALS with FN."
+  (dolist (s signals)
+    (apply fn
+           :session "org.freedesktop.Notifications"
+           "/org/freedesktop/Notifications" "org.freedesktop.Notifications"
+           (car s) (cdr s) nil)))
+
 ;;;###autoload
 (defun osd-start ()
   "Start listening."
   (interactive)
   (when osd--listening (user-error "Already listening"))
   (setq osd--listening t)
-  (dolist (s osd--dbus-signals)
-    (dbus-register-method
-     :session "org.freedesktop.Notifications"
-     "/org/freedesktop/Notifications" "org.freedesktop.Notifications"
-     s (intern (format "osd--dbus-%s" (osd--pascal-to-kebab s))))))
+  (osd--register
+   #'dbus-register-method
+   '(("CloseNotification"    . osd--dbus-close-notification)
+     ("GetCapabilities"      . osd--dbus-get-capabilities)
+     ("GetServerInformation" . osd--dbus-get-server-information)
+     ("Notify"               . osd--dbus-notify)))
+  (osd--register
+   #'dbus-register-signal
+   '(("ActionInvoked"      . osd--dbus-action-invoked)
+     ("NotificationClosed" . osd--dbus-notification-closed))))
 
 ;;;###autoload
 (defun osd-show-notifications ()

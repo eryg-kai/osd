@@ -27,11 +27,6 @@
 
 (require 'osd)
 
-(ert-deftest osd-test-pascal-to-kebab ()
-  "Test converting PascalCase to kebab-case."
-  (should (string= "test" (osd--pascal-to-kebab "Test")))
-  (should (string= "test-this-var" (osd--pascal-to-kebab "TestThisVar"))))
-
 (ert-deftest osd-test-appt-format ()
   "Test appointment formatting."
   (should (equal '("Foo in 10 mins" "@ 10:00 to 11:00.") (osd--org-format-appt "10" "10:00 Foo 10:00-11:00")))
