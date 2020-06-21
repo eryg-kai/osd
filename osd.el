@@ -330,7 +330,6 @@ display the end time."
         (org-add-props string nil 'txt (concat (org-trim txt) " " time))
       string)))
 
-;;;###autoload
 (advice-add 'org-agenda-format-item :around #'osd--org-agenda-format-item)
 
 ;;;###autoload
