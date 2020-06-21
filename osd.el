@@ -44,7 +44,7 @@
   :type 'integer
   :group 'osd)
 
-(cl-defstruct notification time summary body)
+(cl-defstruct notification time summary body actions)
 
 (defvar osd--notification-ring nil "Notification list.")
 
@@ -64,8 +64,7 @@ The NotificationClosed signal is emitted by this method."
 (defun osd--dbus-get-capabilities ()
   "Handle the GetCapabilities signal."
   '((;; "action-icons"  ;; Icons for actions instead of text.
-    "actions"          ;; Provide actions to the user. Not actually supported
-                       ;; but this lie fixes browser notifications.
+    "actions"          ;; Provide actions to the user.
     "body"             ;; Body text.
     "body-hyperlinks"  ;; Hyperlinks in the body.
     ;; "body-images"   ;; Images in the body.
@@ -84,7 +83,7 @@ The NotificationClosed signal is emitted by this method."
     "1.2"    ;; Version of the spec with which the server is compliant.
     ))
 
-(defun osd--dbus-notify (_app-name replaces-id _app-icon summary body _actions _hints _expire_timeout)
+(defun osd--dbus-notify (_app-name replaces-id _app-icon summary body actions _hints _expire_timeout)
   "Handle the Notify signal.
 
 APP-NAME is the optional name of the application sending the
@@ -114,9 +113,10 @@ never expires."
               (setq osd--id (+ 1 osd--id))
               osd--id)))
     (osd-notify id (make-notification
-                    :time (format-time-string osd-time-format)
+                    :actions actions
+                    :body body
                     :summary summary
-                    :body body))
+                    :time (format-time-string osd-time-format)))
     id))
 
 (defun osd--center-truncate (item len)
@@ -184,17 +184,30 @@ If ID is not found, go to the beginning of the buffer."
 (defconst osd--reason-closed    3 "Closed by CloseNotification.")
 (defconst osd--reason-undefined 4 "Undefined/reserved reason.")
 
-(defun osd--delete-notification (id)
-  "Delete a notification by ID."
+(defun osd--find-notification (id)
+  "Return the index of the notification identified by ID."
   (let ((idx (- (or (and osd--notification-ring (ring-length osd--notification-ring)) 0) 1)))
     (while (and (>= idx 0)
                 (not (eq id (car (ring-ref osd--notification-ring idx)))))
       (setq idx (- idx 1)))
-    (when (>= idx 0)
-      (ring-remove osd--notification-ring idx)
-      (osd--apply-dbus-fn
-       #'dbus-send-signal
-       `(("NotificationClosed" ,id ,osd--reason-dismissed))))))
+    (when (>= idx 0) idx)))
+
+(defun osd--delete-notification (id)
+  "Delete a notification by ID."
+  (when-let ((idx (osd--find-notification id)))
+    (ring-remove osd--notification-ring idx)
+    (osd--apply-dbus-fn
+     #'dbus-send-signal
+     `(("NotificationClosed" ,id ,osd--reason-dismissed)))))
+
+(defun osd--visit-notification (id)
+  "Trigger a notification's action by ID."
+  (when-let ((idx (osd--find-notification id))
+             (entry (cdr (ring-ref osd--notification-ring idx)))
+             (actions (cl-struct-slot-value 'notification 'actions entry)))
+    (osd--apply-dbus-fn
+     #'dbus-send-signal
+     `(("ActionInvoked" ,id ,(car actions))))))
 
 ;;;###autoload
 (defun osd-notify (id notification)
@@ -257,7 +270,8 @@ If ID is not found, go to the beginning of the buffer."
 See `tablist-operations-function' for more information."
   (cl-ecase operation
     (delete (mapc #'osd--delete-notification (nth 0 arguments)))
-    (supported-operations '(delete))))
+    (find-entry (osd--visit-notification (nth 0 arguments)))
+    (supported-operations '(delete find-entry))))
 
 (define-derived-mode osd-mode tablist-mode "OSD"
   "Mode for the notification center."
@@ -265,7 +279,9 @@ See `tablist-operations-function' for more information."
         tabulated-list-padding 2
         tablist-operations-function 'osd--tablist-operations)
   (add-hook 'tabulated-list-revert-hook #'osd--refresh nil t)
-  (tabulated-list-init-header))
+  (tabulated-list-init-header)
+  ;; TODO: Does inheriting tablist-mode not automatically set this?
+  (tablist-minor-mode))
 
 (defun osd--org-format-appt (remaining text)
   "Format appointment described by TEXT due in REMAINING minutes.
