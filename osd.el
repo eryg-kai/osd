@@ -44,8 +44,6 @@
   :type 'integer
   :group 'osd)
 
-(defvar osd--listening nil "Whether currently listening for notifications.")
-
 (cl-defstruct notification time summary body)
 
 (defvar osd--notification-ring nil "Notification list.")
@@ -241,8 +239,6 @@ If ID is not found, go to the beginning of the buffer."
 (defun osd-start ()
   "Start listening."
   (interactive)
-  (when osd--listening (user-error "Already listening"))
-  (setq osd--listening t)
   (osd--register
    #'dbus-register-method
    '(("CloseNotification"    . osd--dbus-close-notification)
@@ -267,8 +263,6 @@ If ID is not found, go to the beginning of the buffer."
 (defun osd-stop ()
   "Stop listening."
   (interactive)
-  (unless osd--listening (user-error "Not listening"))
-  (setq osd--listening nil)
   (dbus-unregister-service :session "org.freedesktop.Notifications"))
 
 (defun osd--tablist-operations (operation &rest arguments)
