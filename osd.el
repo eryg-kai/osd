@@ -52,14 +52,6 @@
 ;; for an ID.
 (defvar osd--id 0 "Last notification ID.")
 
-(defun osd--dbus-action-invoked (id action-key)
-  "Handle the ActionInvoked signal.
-
-Runs the action identified by ACTION-KEY (sent in the list of
-actions with the notification) on a notification identified by
-ID."
-  (message "TODO: ActionInvoked: %s %s" id action-key))
-
 (defun osd--dbus-close-notification (id)
   "Handle the CloseNotification signal.
 
@@ -91,17 +83,6 @@ The NotificationClosed signal is emitted by this method."
     "1.1"    ;; Version of the server.
     "1.2"    ;; Version of the spec with which the server is compliant.
     ))
-
-(defun osd--dbus-notification-closed (id reason)
-  "Handle the NotificationClosed signal.
-
-Signal that a notification identiified by ID has been closed
-because of REASON:
-  1 - Expired.
-  2 - Dismissed by the user.
-  3 - Closed by a call to CloseNotification.
-  4 - Undefined/reserved reasons."
-  (message "TODO: NotificationClosed: %s %s" id reason))
 
 (defun osd--dbus-notify (_app-name replaces-id _app-icon summary body _actions _hints _expire_timeout)
   "Handle the Notify signal.
@@ -198,13 +179,22 @@ If ID is not found, go to the beginning of the buffer."
       (setq idx (- idx 1)))
     (when (>= idx 0) (ring-ref osd--notification-ring idx))))
 
+(defconst osd--reason-expired   1 "Notification expired.")
+(defconst osd--reason-dismissed 2 "Closed by user.")
+(defconst osd--reason-closed    3 "Closed by CloseNotification.")
+(defconst osd--reason-undefined 4 "Undefined/reserved reason.")
+
 (defun osd--delete-notification (id)
   "Delete a notification by ID."
   (let ((idx (- (or (and osd--notification-ring (ring-length osd--notification-ring)) 0) 1)))
     (while (and (>= idx 0)
                 (not (eq id (car (ring-ref osd--notification-ring idx)))))
       (setq idx (- idx 1)))
-    (when (>= idx 0) (ring-remove osd--notification-ring idx))))
+    (when (>= idx 0)
+      (ring-remove osd--notification-ring idx)
+      (osd--apply-dbus-fn
+       #'dbus-send-signal
+       `(("NotificationClosed" ,id ,osd--reason-dismissed))))))
 
 ;;;###autoload
 (defun osd-notify (id notification)
@@ -227,28 +217,24 @@ If ID is not found, go to the beginning of the buffer."
     ;; an unread count in the mode line instead?
     (display-buffer buffer)))
 
-(defun osd--register (fn signals)
-  "Register SIGNALS with FN."
-  (dolist (s signals)
-    (apply fn
+(defun osd--apply-dbus-fn (dbus-fn args)
+  "Call DBUS-FN with ARGS which is a list of argument lists."
+  (dolist (a args)
+    (apply dbus-fn
            :session "org.freedesktop.Notifications"
            "/org/freedesktop/Notifications" "org.freedesktop.Notifications"
-           (car s) (cdr s) nil)))
+           a)))
 
 ;;;###autoload
 (defun osd-start ()
   "Start listening."
   (interactive)
-  (osd--register
+  (osd--apply-dbus-fn
    #'dbus-register-method
-   '(("CloseNotification"    . osd--dbus-close-notification)
-     ("GetCapabilities"      . osd--dbus-get-capabilities)
-     ("GetServerInformation" . osd--dbus-get-server-information)
-     ("Notify"               . osd--dbus-notify)))
-  (osd--register
-   #'dbus-register-signal
-   '(("ActionInvoked"      . osd--dbus-action-invoked)
-     ("NotificationClosed" . osd--dbus-notification-closed))))
+   '(("CloseNotification"    osd--dbus-close-notification)
+     ("GetCapabilities"      osd--dbus-get-capabilities)
+     ("GetServerInformation" osd--dbus-get-server-information)
+     ("Notify"               osd--dbus-notify))))
 
 ;;;###autoload
 (defun osd-show-notifications ()
@@ -273,14 +259,13 @@ See `tablist-operations-function' for more information."
     (delete (mapc #'osd--delete-notification (nth 0 arguments)))
     (supported-operations '(delete))))
 
-(define-derived-mode osd-mode tabulated-list-mode "OSD"
+(define-derived-mode osd-mode tablist-mode "OSD"
   "Mode for the notification center."
   (setq tabulated-list-format [("Time" 20 t)("Summary" 50 t)("Body" 50 t)]
         tabulated-list-padding 2
         tablist-operations-function 'osd--tablist-operations)
   (add-hook 'tabulated-list-revert-hook #'osd--refresh nil t)
-  (tabulated-list-init-header)
-  (tablist-minor-mode))
+  (tabulated-list-init-header))
 
 (defun osd--org-format-appt (remaining text)
   "Format appointment described by TEXT due in REMAINING minutes.
