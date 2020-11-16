@@ -44,6 +44,14 @@
   :type 'integer
   :group 'osd)
 
+(defcustom osd-display-method 'echo
+  "How to display new notifications."
+  :type '(choice
+          (const :tag "Never" nil)
+          (const :tag "Notification buffer" buffer)
+          (const :tag "Echo area" echo))
+  :group 'osd)
+
 (cl-defstruct notification time summary body actions)
 
 (defvar osd--notification-ring nil "Notification list.")
@@ -225,10 +233,12 @@ If ID is not found, go to the beginning of the buffer."
       (osd--refresh)
       (tablist-revert)
       (osd--goto-notification id))
-    ;; REVIEW: This is fairly aggressive but I keep missing notifications. Maybe
-    ;; it should disappear after some time or there should be an option to show
-    ;; an unread count in the mode line instead?
-    (display-buffer buffer)))
+    ;; TODO: Unread/unacknowledged count in modeline.
+    (cl-case osd-display-method
+      (echo (let ((body (replace-regexp-in-string "\n+" " " (cl-struct-slot-value 'notification 'body notification)))
+                  (summary (cl-struct-slot-value 'notification 'summary notification)))
+              (message (if (< 0 (length body)) (concat summary ": " body) summary))))
+      (buffer (display-buffer buffer)))))
 
 (defun osd--apply-dbus-fn (dbus-fn args)
   "Call DBUS-FN with ARGS which is a list of argument lists."
