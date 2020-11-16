@@ -152,11 +152,12 @@ When the length is odd the right side will be one longer than the left."
                          ,(osd--center-truncate
                            (cl-struct-slot-value 'notification 'summary notification)
                            50)
-                         ,(osd--center-truncate
-                           (replace-regexp-in-string
-                            "\n+" " "
-                            (cl-struct-slot-value 'notification 'body notification))
-                           50)])
+                         ;; TODO: This still isn't great, would prefer to have
+                         ;; the original newlines in addition to automatic
+                         ;; wrapping but have it all aligned somehow.
+                         ,(replace-regexp-in-string
+                          "\n+" " "
+                          (cl-struct-slot-value 'notification 'body notification))])
          vect))
       (setq idx (- idx 1)))
     vect))
