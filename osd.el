@@ -238,7 +238,7 @@ If ID is not found, go to the beginning of the buffer."
     (cl-case osd-display-method
       (echo (let ((body (replace-regexp-in-string "\n+" " " (cl-struct-slot-value 'notification 'body notification)))
                   (summary (cl-struct-slot-value 'notification 'summary notification)))
-              (message (if (< 0 (length body)) (concat summary ": " body) summary))))
+              (message "%s" (if (< 0 (length body)) (concat summary ": " body) summary))))
       (buffer (display-buffer buffer)))))
 
 (defun osd--apply-dbus-fn (dbus-fn args)
