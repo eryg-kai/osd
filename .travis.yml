@@ -3,7 +3,8 @@ language: generic
 
 env:
   matrix:
-    - EMACS_VERSION=26.3
+    - EMACS_VERSION=26
+    - EMACS_VERSION=27
     - EMACS_VERSION=master
   fast_finish: true
   allow_failures:
