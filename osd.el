@@ -242,12 +242,15 @@ If ID is not found, go to the beginning of the buffer."
       (buffer (display-buffer buffer)))))
 
 (defun osd--apply-dbus-fn (dbus-fn args)
-  "Call DBUS-FN with ARGS which is a list of argument lists."
-  (dolist (a args)
-    (apply dbus-fn
-           :session "org.freedesktop.Notifications"
-           "/org/freedesktop/Notifications" "org.freedesktop.Notifications"
-           a)))
+  "Call DBUS-FN with ARGS which is a list of argument lists.
+
+If dbus support is not enabled then do nothing."
+  (when (featurep 'dbusbind)
+    (dolist (a args)
+      (apply dbus-fn
+             :session "org.freedesktop.Notifications"
+             "/org/freedesktop/Notifications" "org.freedesktop.Notifications"
+             a))))
 
 ;;;###autoload
 (defun osd-start ()
