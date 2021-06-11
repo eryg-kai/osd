@@ -1,8 +1,10 @@
-sudo: false
 language: generic
 
+dist: xenial
+os: linux
+
 env:
-  matrix:
+  jobs:
     # - EMACS_VERSION=26
     - EMACS_VERSION=27
     - EMACS_VERSION=master
