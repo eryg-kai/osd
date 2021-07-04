@@ -52,6 +52,13 @@
           (const :tag "Echo area" echo))
   :group 'osd)
 
+(defcustom osd-notify-program nil
+  "The program to use to send notifications (like notify-send).
+
+If nil trigger the dbus notify handler directly instead."
+  :type 'string
+  :group 'osd)
+
 (cl-defstruct notification time summary body actions)
 
 (defvar osd--notification-ring nil "Notification list.")
@@ -323,7 +330,12 @@ The result is a list with the summary and body."
 
 (defun osd--org-single-appt-display (remaining text)
   "Display appointment described by TEXT due in REMAINING minutes."
-  (apply 'call-process "notify-send" nil 0 nil (osd--org-format-appt remaining text)))
+  (let* ((appt (osd--org-format-appt remaining text))
+         (summary (car appt))
+         (body (cadr appt)))
+    (if osd-notify-program
+        (apply 'call-process osd-notify-program nil 0 nil appt)
+      (osd--dbus-notify nil nil nil summary body nil nil nil))))
 
 (defun osd--org-agenda-format-item (fn &rest args)
   "Append time to txt of the string returned by calling FN with ARGS.

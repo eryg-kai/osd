@@ -5,26 +5,24 @@ Notification daemon for emacs.
 
 ** Features
    - Receive and manage notifications in Emacs.
-   - Send Org appointment notifications through ~notify-send~.
+   - Handle appointment notifications.
 
 ** Usage
-   I use [[https://github.com/jwiegley/use-package][use-package]] and [[https://github.com/raxod502/straight.el][straight.el]]:
-
-   #+begin_src elisp
-     (use-package osd
-       :straight (:host github :repo "0x0049/osd")
-       :init (osd-start))
-   #+end_src
-
    Start Emacs with something like:
 
    #+begin_src sh
      exec dbus-launch --exit-with-session emacs
    #+end_src
 
-   To send Org appointments through ~notify-send~:
+   To handle appointments:
 
    #+begin_src elisp
-   (setq appt-display-format 'window
-         appt-disp-window-function 'osd-org-appt-display)
+     (setq appt-display-format 'window
+           appt-disp-window-function 'osd-org-appt-display)
+   #+end_src
+
+   To send appointments to an external program:
+
+   #+begin_src elisp
+     (setq osd-notify-program "notify-send")
    #+end_src
