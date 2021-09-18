@@ -74,7 +74,9 @@ Close a notification identified by ID. If the notification no
 longer exists, an empty D-BUS message is sent back.
 
 The NotificationClosed signal is emitted by this method."
-  (message "TODO: CloseNotification: %s" id))
+  (osd--apply-dbus-fn
+     #'dbus-send-signal
+     `(("NotificationClosed" ,id ,osd--reason-closed))))
 
 (defun osd--dbus-get-capabilities ()
   "Handle the GetCapabilities signal."
