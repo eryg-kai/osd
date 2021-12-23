@@ -1,4 +1,4 @@
-#+TITLE: osd • [[https://travis-ci.org/0x0049/osd][https://travis-ci.org/0x0049/osd.svg?branch=master]]
+#+TITLE: osd • [[https://github.com/0x0049/osd/actions/workflows/test.yaml?branch=master][https://github.com/0x0049/osd/actions/workflows/test.yaml/badge.svg?branch=master]]
 #+STARTUP: showeverything
 
 Notification daemon for Emacs.

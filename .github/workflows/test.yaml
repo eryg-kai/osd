@@ -1,0 +1,48 @@
+name: Test
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    paths-ignore:
+      - '**.md'
+      - '**.org'
+      - '.dir-locals.el'
+    branches:
+      - master
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        platform:
+          - ubuntu-latest
+          # - macos-latest
+        emacs_version:
+          - 27.2
+          - snapshot
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: purcell/setup-emacs@master
+        with:
+          version: ${{ matrix.emacs_version }}
+
+      - uses: pat-s/always-upload-cache@v2.1.5
+        with:
+          path: |
+            ~/.emacs.d
+            ~/.config/emacs
+          key: ${{ matrix.platform }}-${{ matrix.emacs_version }}
+
+      - run: emacs --version
+
+      - name: Install packages
+        run: emacs --batch -l ./test/packages.el -f osd-test-install
+
+      - name: Run tests
+        run: emacs --batch -l ./test/osd-test.el -f ert-run-tests-batch-and-exit

@@ -25,7 +25,18 @@
 
 ;;; Code:
 
+(package-initialize)
+
+(add-to-list 'load-path (file-name-directory (directory-file-name (file-name-directory load-file-name))))
+
+;; https://github.com/rejeep/ert-runner.el/issues/49
+(when (> emacs-major-version 26)
+  (defalias 'ert--print-backtrace 'backtrace-to-string))
+
 (require 'osd)
+
+;; The default is to use `message' which will interfere with test output.
+(setq osd-display-method 'buffer)
 
 (ert-deftest osd-test-appt-format ()
   "Test appointment formatting."
