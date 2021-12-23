@@ -37,7 +37,7 @@
   (should (equal '("thud garply plugh in 2 mins" "@ 13:00.") (osd--org-format-appt "2" "13:00 thud garply plugh")))
   (should (equal '("thud garply plugh in 2 mins" "") (osd--org-format-appt "2" "thud garply plugh"))))
 
-(ert-deftest osd-test-notify ()
+(ert-deftest osd-test-internal-notify ()
   "Test that notifications are added."
   (should-not osd--notification-ring)
   (should-not (osd--entries))
@@ -49,7 +49,7 @@
                          :time (format-time-string osd-time-format)
                          :summary (format "summary %s" i)
                          :body (format "body %s" i))))
-      (osd-notify i notification)))
+      (osd--notify i notification)))
 
   (should (eq 3 (ring-length osd--notification-ring)))
 
@@ -66,7 +66,7 @@
                          :time (format-time-string osd-time-format)
                          :summary (format "summary replaced %s" i)
                          :body (format "body replaced %s" i))))
-      (osd-notify i notification)))
+      (osd--notify i notification)))
 
   (should (eq 3 (ring-length osd--notification-ring)))
 
@@ -91,6 +91,25 @@
 
   (osd--tablist-operations 'delete '(0 2))
   (should (eq 0 (ring-length osd--notification-ring))))
+
+(ert-deftest osd-test-notify ()
+  (osd-notify '("foo" "bar"))
+
+  (should (string= "foo" (cl-struct-slot-value 'notification 'summary (cdr (ring-ref osd--notification-ring 0)))))
+  (should (string= "bar" (cl-struct-slot-value 'notification 'body (cdr (ring-ref osd--notification-ring 0))))))
+
+(ert-deftest osd-test-org-appt ()
+  (osd-org-appt-display "10" nil "foo")
+
+  (should (string= "foo in 10 mins" (cl-struct-slot-value 'notification 'summary (cdr (ring-ref osd--notification-ring 0)))))
+  (should (string= "" (cl-struct-slot-value 'notification 'body (cdr (ring-ref osd--notification-ring 0)))))
+
+  (osd-org-appt-display '("5" "15") nil '("bar" "bazzle"))
+
+  (should (string= "bazzle in 15 mins" (cl-struct-slot-value 'notification 'summary (cdr (ring-ref osd--notification-ring 0)))))
+  (should (string= "" (cl-struct-slot-value 'notification 'body (cdr (ring-ref osd--notification-ring 0)))))
+  (should (string= "bar in 5 mins" (cl-struct-slot-value 'notification 'summary (cdr (ring-ref osd--notification-ring 1)))))
+  (should (string= "" (cl-struct-slot-value 'notification 'body (cdr (ring-ref osd--notification-ring 1))))))
 
 (provide 'osd-test)
 

@@ -5,7 +5,7 @@
 ;; Author: 0x0049 <dev@0x0049.me>
 ;; URL: https://github.com/0x0049/osd
 ;; Keywords: notifications dbus
-;; Version: 1.0.1
+;; Version: 2.0.0
 
 ;; This file is NOT part of GNU Emacs.
 ;;
@@ -24,7 +24,7 @@
 
 ;;; Commentary:
 
-;; Emacs must be compiled with dbus support. Start Emacs with something like:
+;; Emacs must be compiled with dbus support.  Start Emacs with something like:
 ;; `exec dbus-launch --exit-with-session <emacs invocation>'.
 
 ;; See https://developer.gnome.org/notification-spec/ for the notification spec.
@@ -70,7 +70,7 @@ If nil trigger the dbus notify handler directly instead."
 (defun osd--dbus-close-notification (id)
   "Handle the CloseNotification signal.
 
-Close a notification identified by ID. If the notification no
+Close a notification identified by ID.  If the notification no
 longer exists, an empty D-BUS message is sent back.
 
 The NotificationClosed signal is emitted by this method."
@@ -107,8 +107,8 @@ APP-NAME is the optional name of the application sending the
 notification.
 
 REPLACES-ID is the optional ID of a notification this
-notification replaces. If this is zero, the return value is an ID
-that represents the notification. Otherwise it's the same as
+notification replaces.  If this is zero, the return value is an
+ID that represents the notification.  Otherwise it's the same as
 REPLACES-ID.
 
 APP-ICON is the optional program icon of the calling application.
@@ -116,24 +116,24 @@ APP-ICON is the optional program icon of the calling application.
 SUMMARY is a brief description of the notification while BODY is
 the optional detailed body text.
 
-ACTIONS are list of pairs. The even elements are the identifier
+ACTIONS are list of pairs.  The even elements are the identifier
 and the odd elements are the strings to display to the user.
 
 HINTS are optional hints that can provide extra information to
 the server like a PID.
 
 EXPIRE-TIMEOUT is how long to display the notification before
-automatically closing it. If -1 it depends on the server. If 0 it
-never expires."
+automatically closing it.  If -1 it depends on the server.  If 0
+it never expires."
   (let ((id (if (and replaces-id (not (eq replaces-id 0)))
                 replaces-id
               (setq osd--id (+ 1 osd--id))
               osd--id)))
-    (osd-notify id (make-notification
-                    :actions actions
-                    :body body
-                    :summary summary
-                    :time (format-time-string osd-time-format)))
+    (osd--notify id (make-notification
+                     :actions actions
+                     :body body
+                     :summary summary
+                     :time (format-time-string osd-time-format)))
     id))
 
 (defun osd--center-truncate (item len)
@@ -227,8 +227,7 @@ If ID is not found, go to the beginning of the buffer."
      #'dbus-send-signal
      `(("ActionInvoked" ,id ,(car actions))))))
 
-;;;###autoload
-(defun osd-notify (id notification)
+(defun osd--notify (id notification)
   "Store NOTIFICATION by ID then refresh notification list."
   (if osd--notification-ring
       (unless (eq osd-max-notifications (ring-size osd--notification-ring))
@@ -287,6 +286,13 @@ If dbus support is not enabled then do nothing."
   (interactive)
   (dbus-unregister-service :session "org.freedesktop.Notifications"))
 
+;;;###autoload
+(defun osd-notify (notification)
+  "Display NOTIFICATION, a list with a summary and a body."
+  (if osd-notify-program
+      (apply 'call-process osd-notify-program nil 0 nil notification)
+    (osd--dbus-notify nil nil nil (car notification) (cadr notification) nil nil nil)))
+
 (defun osd--tablist-operations (operation &rest arguments)
   "Perform OPERATION with ARGUMENTS.
 
@@ -330,15 +336,6 @@ The result is a list with the summary and body."
                        ".")))
         `(,(format "%s %s" text remaining) "")))))
 
-(defun osd--org-single-appt-display (remaining text)
-  "Display appointment described by TEXT due in REMAINING minutes."
-  (let* ((appt (osd--org-format-appt remaining text))
-         (summary (car appt))
-         (body (cadr appt)))
-    (if osd-notify-program
-        (apply 'call-process osd-notify-program nil 0 nil appt)
-      (osd--dbus-notify nil nil nil summary body nil nil nil))))
-
 (defun osd--org-agenda-format-item (fn &rest args)
   "Append time to txt of the string returned by calling FN with ARGS.
 
@@ -365,8 +362,8 @@ The arguments may also be lists, where each element is a separate
 appointment."
   (if (listp remaining)
       (dotimes (i (length remaining))
-        (osd--org-single-appt-display (nth i remaining) (nth i text)))
-    (osd--org-single-appt-display remaining text)))
+        (osd-notify (osd--org-format-appt (nth i remaining) (nth i text))))
+    (osd-notify (osd--org-format-appt remaining text))))
 
 (provide 'osd)
 

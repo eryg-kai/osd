@@ -1,7 +1,7 @@
 #+TITLE: osd • [[https://travis-ci.org/0x0049/osd][https://travis-ci.org/0x0049/osd.svg?branch=master]]
 #+STARTUP: showeverything
 
-Notification daemon for emacs.
+Notification daemon for Emacs.
 
 ** Features
    - Receive and manage notifications in Emacs.
