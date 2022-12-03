@@ -1,11 +1,11 @@
 ;;; osd.el --- Emacs notification daemon. -*- lexical-binding: t -*-
 
-;; Copyright (c) 2020 0x0049
+;; Copyright (c) 2022 0x0049
 
 ;; Author: 0x0049 <dev@0x0049.me>
 ;; URL: https://github.com/0x0049/osd
 ;; Keywords: notifications dbus
-;; Version: 2.0.0
+;; Version: 2.1.0
 
 ;; This file is NOT part of GNU Emacs.
 ;;
@@ -59,7 +59,7 @@ If nil trigger the dbus notify handler directly instead."
   :type 'string
   :group 'osd)
 
-(cl-defstruct notification time summary body actions)
+(cl-defstruct notification time app summary body actions)
 
 (defvar osd--notification-ring nil "Notification list.")
 
@@ -100,7 +100,7 @@ The NotificationClosed signal is emitted by this method."
     "1.2"    ;; Version of the spec with which the server is compliant.
     ))
 
-(defun osd--dbus-notify (_app-name replaces-id _app-icon summary body actions _hints _expire_timeout)
+(defun osd--dbus-notify (app-name replaces-id _app-icon summary body actions _hints _expire_timeout)
   "Handle the Notify signal.
 
 APP-NAME is the optional name of the application sending the
@@ -131,6 +131,7 @@ it never expires."
               osd--id)))
     (osd--notify id (make-notification
                      :actions actions
+                     :app (or app-name "unknown")
                      :body body
                      :summary summary
                      :time (format-time-string osd-time-format)))
@@ -158,6 +159,9 @@ When the length is odd the right side will be one longer than the left."
              (notification (cdr entry)))
         (push
          `(,(car entry) [,(cl-struct-slot-value 'notification 'time notification)
+                         ,(osd--center-truncate
+                           (cl-struct-slot-value 'notification 'app notification)
+                           10)
                          ,(osd--center-truncate
                            (cl-struct-slot-value 'notification 'summary notification)
                            50)
@@ -244,9 +248,10 @@ If ID is not found, go to the beginning of the buffer."
       (osd--goto-notification id))
     ;; TODO: Unread/unacknowledged count in modeline.
     (cl-case osd-display-method
-      (echo (let ((body (replace-regexp-in-string "\n+" " " (cl-struct-slot-value 'notification 'body notification)))
+      (echo (let ((app (cl-struct-slot-value 'notification 'app notification))
+                  (body (replace-regexp-in-string "\n+" " " (cl-struct-slot-value 'notification 'body notification)))
                   (summary (cl-struct-slot-value 'notification 'summary notification)))
-              (message "%s" (if (< 0 (length body)) (concat summary ": " body) summary))))
+              (message "%s" (if (< 0 (length body)) (concat "[" app "] " summary ": " body) summary))))
       (buffer (display-buffer buffer)))))
 
 (defun osd--apply-dbus-fn (dbus-fn args)
@@ -288,10 +293,18 @@ If dbus support is not enabled then do nothing."
 
 ;;;###autoload
 (defun osd-notify (notification)
-  "Display NOTIFICATION, a list with a summary and a body."
+  "Display NOTIFICATION, a list with a summary, body, and app name."
   (if osd-notify-program
-      (apply 'call-process osd-notify-program nil 0 nil notification)
-    (osd--dbus-notify nil nil nil (car notification) (cadr notification) nil nil nil)))
+      (set-process-sentinel
+       (start-process osd-notify-program nil osd-notify-program
+                      "--app-name" (or (nth 2 notification) "unknown")
+                      (nth 0 notification)
+                      (nth 1 notification))
+       (lambda (_ event)
+         (message "%s: %s" osd-notify-program (string-trim event))))
+    (osd--dbus-notify (nth 2 notification) nil nil
+                      (nth 0 notification)
+                      (nth 1 notification) nil nil nil)))
 
 (defun osd--tablist-operations (operation &rest arguments)
   "Perform OPERATION with ARGUMENTS.
@@ -304,7 +317,7 @@ See `tablist-operations-function' for more information."
 
 (define-derived-mode osd-mode tablist-mode "OSD"
   "Mode for the notification center."
-  (setq tabulated-list-format [("Time" 20 t)("Summary" 50 t)("Body" 50 t)]
+  (setq tabulated-list-format [("Time" 20 t)("App" 10 t)("Summary" 50 t)("Body" 50 t)]
         tabulated-list-padding 2
         tablist-operations-function 'osd--tablist-operations)
   (add-hook 'tabulated-list-revert-hook #'osd--refresh nil t)
@@ -362,8 +375,8 @@ The arguments may also be lists, where each element is a separate
 appointment."
   (if (listp remaining)
       (dotimes (i (length remaining))
-        (osd-notify (osd--org-format-appt (nth i remaining) (nth i text))))
-    (osd-notify (osd--org-format-appt remaining text))))
+        (osd-notify (append (osd--org-format-appt (nth i remaining) (nth i text)) '("appt"))))
+    (osd-notify (append (osd--org-format-appt remaining text) '("appt")))))
 
 (provide 'osd)
 

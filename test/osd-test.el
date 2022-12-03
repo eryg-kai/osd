@@ -58,6 +58,7 @@
   (dotimes (i 3)
     (let ((notification (make-notification
                          :time (format-time-string osd-time-format)
+                         :app (format "app %s" i)
                          :summary (format "summary %s" i)
                          :body (format "body %s" i))))
       (osd--notify i notification)))
@@ -68,6 +69,7 @@
   (should (eq 1 (car (ring-ref osd--notification-ring 1))))
   (should (eq 0 (car (ring-ref osd--notification-ring 2))))
 
+  (should (string= "app 2" (cl-struct-slot-value 'notification 'app (cdr (ring-ref osd--notification-ring 0)))))
   (should (string= "summary 2" (cl-struct-slot-value 'notification 'summary (cdr (ring-ref osd--notification-ring 0)))))
   (should (string= "summary 1" (cl-struct-slot-value 'notification 'summary (cdr (ring-ref osd--notification-ring 1)))))
   (should (string= "body 0" (cl-struct-slot-value 'notification 'body (cdr (ring-ref osd--notification-ring 2)))))
@@ -75,6 +77,7 @@
   (dotimes (i 3)
     (let ((notification (make-notification
                          :time (format-time-string osd-time-format)
+                         :app (format "app replaced %s" i)
                          :summary (format "summary replaced %s" i)
                          :body (format "body replaced %s" i))))
       (osd--notify i notification)))
@@ -85,15 +88,17 @@
   (should (eq 1 (car (ring-ref osd--notification-ring 1))))
   (should (eq 0 (car (ring-ref osd--notification-ring 2))))
 
+  (should (string= "app replaced 2" (cl-struct-slot-value 'notification 'app (cdr (ring-ref osd--notification-ring 0)))))
   (should (string= "summary replaced 2" (cl-struct-slot-value 'notification 'summary (cdr (ring-ref osd--notification-ring 0)))))
   (should (string= "summary replaced 1" (cl-struct-slot-value 'notification 'summary (cdr (ring-ref osd--notification-ring 1)))))
   (should (string= "body replaced 0" (cl-struct-slot-value 'notification 'body (cdr (ring-ref osd--notification-ring 2)))))
 
   (let ((entries (osd--entries)))
     (should (eq 3 (length entries)))
-    (should (string= "summary replaced 2" (aref (cadr (nth 0 entries)) 1)))
-    (should (string= "summary replaced 1" (aref (cadr (nth 1 entries)) 1)))
-    (should (string= "body replaced 0" (aref (cadr (nth 2 entries)) 2))))
+    (should (string= "app …ced 2" (aref (cadr (nth 0 entries)) 1)))
+    (should (string= "summary replaced 2" (aref (cadr (nth 0 entries)) 2)))
+    (should (string= "summary replaced 1" (aref (cadr (nth 1 entries)) 2)))
+    (should (string= "body replaced 0" (aref (cadr (nth 2 entries)) 3))))
 
   (osd--delete-notification 1)
   (should (eq 2 (ring-length osd--notification-ring)))
@@ -105,18 +110,26 @@
 
 (ert-deftest osd-test-notify ()
   (osd-notify '("foo" "bar"))
+  (should (string= "unknown" (cl-struct-slot-value 'notification 'app (cdr (ring-ref osd--notification-ring 0)))))
+  (should (string= "foo" (cl-struct-slot-value 'notification 'summary (cdr (ring-ref osd--notification-ring 0)))))
+  (should (string= "bar" (cl-struct-slot-value 'notification 'body (cdr (ring-ref osd--notification-ring 0)))))
 
+  (osd-notify '("foo" "bar" "qux"))
+
+  (should (string= "qux" (cl-struct-slot-value 'notification 'app (cdr (ring-ref osd--notification-ring 0)))))
   (should (string= "foo" (cl-struct-slot-value 'notification 'summary (cdr (ring-ref osd--notification-ring 0)))))
   (should (string= "bar" (cl-struct-slot-value 'notification 'body (cdr (ring-ref osd--notification-ring 0))))))
 
 (ert-deftest osd-test-org-appt ()
   (osd-org-appt-display "10" nil "foo")
 
+  (should (string= "appt" (cl-struct-slot-value 'notification 'app (cdr (ring-ref osd--notification-ring 0)))))
   (should (string= "foo in 10 mins" (cl-struct-slot-value 'notification 'summary (cdr (ring-ref osd--notification-ring 0)))))
   (should (string= "" (cl-struct-slot-value 'notification 'body (cdr (ring-ref osd--notification-ring 0)))))
 
   (osd-org-appt-display '("5" "15") nil '("bar" "bazzle"))
 
+  (should (string= "appt" (cl-struct-slot-value 'notification 'app (cdr (ring-ref osd--notification-ring 0)))))
   (should (string= "bazzle in 15 mins" (cl-struct-slot-value 'notification 'summary (cdr (ring-ref osd--notification-ring 0)))))
   (should (string= "" (cl-struct-slot-value 'notification 'body (cdr (ring-ref osd--notification-ring 0)))))
   (should (string= "bar in 5 mins" (cl-struct-slot-value 'notification 'summary (cdr (ring-ref osd--notification-ring 1)))))
