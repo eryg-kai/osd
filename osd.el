@@ -5,7 +5,7 @@
 ;; Author: 0x0049 <dev@0x0049.me>
 ;; URL: https://github.com/0x0049/osd
 ;; Keywords: notifications dbus
-;; Version: 2.1.0
+;; Version: 2.1.1
 
 ;; This file is NOT part of GNU Emacs.
 ;;
@@ -96,11 +96,11 @@ The NotificationClosed signal is emitted by this method."
   "Handle the GetServerInformation signal."
   '("osd"    ;; Name of the server.
     "0x0049" ;; Vendor name.
-    "1.1"    ;; Version of the server.
+    "2.1.1"  ;; Version of the server.
     "1.2"    ;; Version of the spec with which the server is compliant.
     ))
 
-(defun osd--dbus-notify (app-name replaces-id _app-icon summary body actions _hints _expire_timeout)
+(defun osd--dbus-notify (app-name _replaces-id _app-icon summary body actions _hints _expire_timeout)
   "Handle the Notify signal.
 
 APP-NAME is the optional name of the application sending the
@@ -125,17 +125,14 @@ the server like a PID.
 EXPIRE-TIMEOUT is how long to display the notification before
 automatically closing it.  If -1 it depends on the server.  If 0
 it never expires."
-  (let ((id (if (and replaces-id (not (eq replaces-id 0)))
-                replaces-id
-              (setq osd--id (+ 1 osd--id))
-              osd--id)))
-    (osd--notify id (make-notification
-                     :actions actions
-                     :app (or app-name "unknown")
-                     :body body
-                     :summary summary
-                     :time (format-time-string osd-time-format)))
-    id))
+  (setq osd--id (+ 1 osd--id))
+  (osd--notify osd--id (make-notification
+                       :actions actions
+                       :app (or app-name "unknown")
+                       :body body
+                       :summary summary
+                       :time (format-time-string osd-time-format)))
+  osd--id)
 
 (defun osd--center-truncate (item len)
   "Replace the center of ITEM with … to make it of length LEN (including …).
