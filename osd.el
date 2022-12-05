@@ -27,7 +27,8 @@
 ;; Emacs must be compiled with dbus support.  Start Emacs with something like:
 ;; `exec dbus-launch --exit-with-session <emacs invocation>'.
 
-;; See https://developer.gnome.org/notification-spec/ for the notification spec.
+;; See https://specifications.freedesktop.org/notification-spec/notification-spec-latest.html
+;; for the notification spec.
 
 ;;; Code:
 
