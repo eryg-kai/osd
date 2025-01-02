@@ -33,7 +33,6 @@
 ;;; Code:
 
 (require 'dbus)
-(require 'tablist)
 
 (defcustom osd-time-format "%Y-%m-%d %T"
   "Format for the notification time column."
